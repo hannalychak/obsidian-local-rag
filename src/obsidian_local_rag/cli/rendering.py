@@ -23,19 +23,6 @@ def print_error(message: str, *, debug: bool = False) -> None:
         console.print_exception()
 
 
-def print_not_implemented(command_name: str, *, debug: bool = False) -> None:
-    """Show a friendly "not implemented yet" panel for a stubbed command/service call."""
-    console.print(
-        Panel(
-            f"`{command_name}` is not implemented yet.",
-            title="Not implemented",
-            border_style="yellow",
-        )
-    )
-    if debug:
-        console.print_exception()
-
-
 def render_sources_footer(citations: dict[str, Citation], vault_dir_basename: str) -> str:
     """Render the sources footer: `[S3] relative/path.md:L10-L42` plus a clickable
     `obsidian://open?vault=...&file=...` hyperlink, both URL-encoded.

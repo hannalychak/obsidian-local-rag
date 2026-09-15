@@ -12,9 +12,20 @@ from pydantic import ValidationError
 from obsidian_local_rag.app.agent_loop import AgentLoop
 from obsidian_local_rag.app.chat_session import ChatSession
 from obsidian_local_rag.app.composition import build_services
+from obsidian_local_rag.app.indexing_service import load_notes_and_graph
+from obsidian_local_rag.app.tools import build_tool_handlers
 from obsidian_local_rag.cli.chat_repl import run_chat_repl
-from obsidian_local_rag.cli.rendering import print_error, print_not_implemented
+from obsidian_local_rag.cli.rendering import print_error
 from obsidian_local_rag.config.settings import Settings
+
+_SYSTEM_PROMPT = (
+    "You are a helpful assistant answering questions about the user's Obsidian vault. "
+    "Use the search_vault tool to find relevant notes before answering questions about their "
+    "content; use expand_graph to explore notes linked from ones you've already found; use "
+    "read_note to read a specific note's full content when you know its note_id. "
+    "Cite retrieved context with its citation key, e.g. [S1], directly in your answer wherever "
+    "you use it. Only cite keys you were actually given."
+)
 
 
 def chat(
@@ -29,13 +40,16 @@ def chat(
             Settings(vault_path=vault) if vault is not None else Settings()  # type: ignore[call-arg]  # required fields resolved from env/.env at runtime
         )
         services = build_services(settings)
+        _, graph = load_notes_and_graph(settings.vault_path, settings.exclude_globs)
+        tool_handlers = build_tool_handlers(settings, services, graph)
         agent_loop = AgentLoop(
-            services.llm_client, {}, settings.agent_max_iterations, settings.context_token_budget
+            services.llm_client,
+            tool_handlers,
+            settings.agent_max_iterations,
+            settings.context_token_budget,
         )
-        chat_session = ChatSession(agent_loop, system_prompt="")
+        chat_session = ChatSession(agent_loop, system_prompt=_SYSTEM_PROMPT)
         asyncio.run(run_chat_repl(chat_session, settings))
     except ValidationError as exc:
         print_error(str(exc), debug=debug)
         raise typer.Exit(code=1) from exc
-    except NotImplementedError:
-        print_not_implemented("chat", debug=debug)

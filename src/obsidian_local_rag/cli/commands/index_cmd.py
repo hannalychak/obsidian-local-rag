@@ -8,10 +8,11 @@ from typing import Annotated
 
 import typer
 from pydantic import ValidationError
+from rich.progress import Progress, TaskID
 
 from obsidian_local_rag.app.composition import build_services
 from obsidian_local_rag.app.indexing_service import IndexingService
-from obsidian_local_rag.cli.rendering import print_error, print_not_implemented
+from obsidian_local_rag.cli.rendering import print_error
 from obsidian_local_rag.config.settings import Settings
 
 
@@ -31,9 +32,16 @@ def index(
         )
         services = build_services(settings)
         indexing_service = IndexingService(settings, services)
-        asyncio.run(indexing_service.run_index(full=full))
+
+        with Progress() as progress:
+            task_ids: dict[str, TaskID] = {}
+
+            def on_progress(stage: str, current: int, total: int) -> None:
+                if stage not in task_ids:
+                    task_ids[stage] = progress.add_task(stage, total=total)
+                progress.update(task_ids[stage], completed=current, total=total)
+
+            asyncio.run(indexing_service.run_index(full=full, on_progress=on_progress))
     except ValidationError as exc:
         print_error(str(exc), debug=debug)
         raise typer.Exit(code=1) from exc
-    except NotImplementedError:
-        print_not_implemented("index", debug=debug)
