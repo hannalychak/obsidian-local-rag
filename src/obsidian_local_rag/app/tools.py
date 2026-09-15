@@ -11,7 +11,7 @@ import asyncio
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from obsidian_local_rag.app.agent_loop import ToolHandler
 from obsidian_local_rag.app.composition import Services
@@ -29,6 +29,20 @@ from obsidian_local_rag.domain.models import NoteContent, ScoredChunk, SearchFil
 class SearchVaultArgs(BaseModel):
     query: str
     filters: SearchFilters | None = None
+
+    @field_validator("filters", mode="before")
+    @classmethod
+    def _coerce_empty_filters(cls, value: object) -> object:
+        """A small model will sometimes pass `""` or `{}` for an optional field it isn't using,
+        instead of omitting it — observed live (`filters=''`) causing a real search to fail and
+        the model to fall back to an ungrounded, hallucinated answer with fake citations. Treat
+        anything that isn't a real filter payload as "no filter" rather than rejecting it.
+        """
+        if isinstance(value, str) and not value.strip():
+            return None
+        if isinstance(value, dict) and not value:
+            return None
+        return value
 
 
 class ExpandGraphArgs(BaseModel):

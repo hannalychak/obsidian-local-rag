@@ -105,12 +105,17 @@ class Citation:
 
 @dataclass(frozen=True, slots=True)
 class SearchFilters:
-    """Query-time payload filters, applied identically to both retrievers before fusion."""
+    """Query-time payload filters, applied identically to both retrievers before fusion.
 
-    tags: tuple[str, ...] | None
-    folder: str | None
-    created_after: datetime | None
-    created_before: datetime | None
+    Every field defaults to None so a partial filter (e.g. just `folder`) is enough — a caller
+    (in practice, an LLM's tool-call arguments) shouldn't have to spell out every field it isn't
+    using.
+    """
+
+    tags: tuple[str, ...] | None = None
+    folder: str | None = None
+    created_after: datetime | None = None
+    created_before: datetime | None = None
 
 
 @dataclass(frozen=True, slots=True)
