@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import signal
 from pathlib import Path
+from types import FrameType
 from typing import Annotated
 
 import typer
@@ -32,6 +34,18 @@ _SYSTEM_PROMPT = (
 )
 
 
+def _raise_system_exit(signum: int, frame: FrameType | None) -> None:
+    """Convert SIGTERM/SIGHUP into a catchable exception.
+
+    Python's default handling of these (unlike SIGINT/Ctrl+C, which already raises
+    KeyboardInterrupt) terminates the process immediately without running `finally` blocks —
+    closing the terminal window running `chat` sends SIGHUP, which silently skipped the Ollama
+    auto-stop cleanup below. Verified: reproduced with a minimal asyncio.run() + finally script,
+    confirmed the finally block is skipped by default and runs correctly with this handler.
+    """
+    raise SystemExit(128 + signum)
+
+
 def chat(
     vault: Annotated[
         Path | None, typer.Option("--vault", help="Path to the Obsidian vault.")
@@ -40,6 +54,8 @@ def chat(
 ) -> None:
     """Start an interactive chat session over the indexed vault."""
     started_ollama = False
+    previous_term_handler = signal.signal(signal.SIGTERM, _raise_system_exit)
+    previous_hup_handler = signal.signal(signal.SIGHUP, _raise_system_exit)
     try:
         settings = (
             Settings(vault_path=vault) if vault is not None else Settings()  # type: ignore[call-arg]  # required fields resolved from env/.env at runtime
@@ -68,6 +84,8 @@ def chat(
         print_error(str(exc), debug=debug)
         raise typer.Exit(code=1) from exc
     finally:
+        signal.signal(signal.SIGTERM, previous_term_handler)
+        signal.signal(signal.SIGHUP, previous_hup_handler)
         if started_ollama:
             console.print("[dim]Stopping Ollama...[/dim]")
             stop_ollama()
