@@ -14,20 +14,41 @@ from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol
 
-from obsidian_local_rag.domain.models import Chunk, ScoredChunk, SearchFilters, StreamEvent
+from obsidian_local_rag.domain.models import (
+    Chunk,
+    ScoredChunk,
+    SearchFilters,
+    StreamEvent,
+    ToolCallEvent,
+)
 
 # A sparse vector as (indices, values), mirroring fastembed's SparseEmbedding / Qdrant's
 # SparseVector shape without importing either SDK into `core`.
 SparseVector = tuple[Sequence[int], Sequence[float]]
 
 
+class LLMConnectionError(RuntimeError):
+    """Raised by an `LLMClient` implementation when it cannot reach its backend.
+
+    Deliberately not a third-party exception type (e.g. `httpx.ConnectError`): callers above
+    `adapters` — `app`, `cli` — must be able to catch connection failures without importing the
+    SDK that produced them (CLAUDE.md's adapters-only-SDK-imports rule).
+    """
+
+
 @dataclass(frozen=True, slots=True)
 class Message:
-    """One turn in the conversation passed to `LLMClient.stream`."""
+    """One turn in the conversation passed to `LLMClient.stream`.
+
+    `tool_calls` is populated only on assistant messages that requested tool calls (empty
+    otherwise), so a full conversation history round-trips correctly across `stream` calls — the
+    model needs to see its own prior tool-call requests, not just their results.
+    """
 
     role: Literal["user", "assistant", "tool"]
     content: str
     tool_call_id: str | None = None
+    tool_calls: tuple[ToolCallEvent, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,7 +104,13 @@ class Reranker(Protocol):
 
 
 class LLMClient(Protocol):
-    """Streams a model turn: text deltas, tool calls, and a terminal stop-with-usage event."""
+    """Streams a model turn: text deltas, tool calls, and a terminal stop-with-usage event.
+
+    Implemented by `adapters.llm_ollama.OllamaClient` — the only LLM backend by design, so vault
+    content never leaves the machine. `core`, the rest of `app`, and `cli` depend only on this
+    Protocol, never on the concrete adapter; `app.composition.build_services` is the only place
+    that imports it.
+    """
 
     def stream(
         self, messages: list[Message], tools: list[ToolSpec], system: str

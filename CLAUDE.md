@@ -14,7 +14,17 @@ config     -> Settings (pydantic-settings)
 
 - `core` depends on Protocols (`core/protocols.py`), never on `adapters`. Wiring happens in one
   composition function: `app/composition.py::build_services`.
-- Third-party SDK imports (`qdrant_client`, `fastembed`, `anthropic`) appear ONLY in `adapters`.
+- Third-party SDK imports (`qdrant_client`, `fastembed`, `httpx`) appear ONLY in `adapters`.
+
+## LLM backend: Ollama only, by design
+
+`adapters/llm_ollama.py::OllamaClient` is the only `LLMClient` implementation — a deliberate
+privacy decision, not a temporary gap: embeddings and the vector store were already fully local,
+and this closes the last path by which vault content could leave the machine (no cloud LLM API,
+no API key anywhere in this codebase). `core`, the rest of `app`, and `cli` depend only on the
+`LLMClient` Protocol; `app/composition.py::build_services` is the only place that imports the
+concrete adapter. Do not add a second LLM backend without the user explicitly asking for it —
+that would reopen the privacy question this decision settled.
 
 ## Anti-over-engineering rules
 

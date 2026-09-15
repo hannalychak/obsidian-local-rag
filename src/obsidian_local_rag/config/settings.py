@@ -26,9 +26,11 @@ class Settings(BaseSettings):
     two tiers; the CLI layer must surface a clear, actionable error when neither is present
     (`vault_path` has no default, so construction raises `pydantic.ValidationError` when unset).
 
-    API keys (e.g. `ANTHROPIC_API_KEY`) are intentionally NOT fields on this model: they are read
-    directly from the environment by the adapter that needs them, and must never be logged or
-    persisted to a settings file.
+    LLM backend is Ollama only, by design: this keeps every part of the pipeline — embeddings,
+    vector store, and the LLM call itself — fully local, so vault content never leaves the
+    machine. No API key field exists on this model for that reason. `llm_model` is a locally
+    pulled Ollama model tag (e.g. `"llama3.1"`; run `ollama pull <tag>` first — this adapter does
+    not pull models on demand). `ollama_base_url` defaults to the standard local Ollama port.
     """
 
     model_config = SettingsConfigDict(env_prefix="OBSIDIAN_RAG_", env_file=".env", extra="ignore")
@@ -39,7 +41,11 @@ class Settings(BaseSettings):
         default_factory=lambda: Path(platformdirs.user_data_dir("obsidian-local-rag"))
     )
 
-    dense_model: str = "intfloat/multilingual-e5-small"
+    # Verified against the installed fastembed's actual model registry (2026-09-15) — a Phase 1
+    # dense-model choice ("intfloat/multilingual-e5-small") turned out not to exist in it; this
+    # is a real, smaller multilingual model instead (~220MB, 384-dim, ~50 languages), a good fit
+    # for constrained hardware (see README's hardware note).
+    dense_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     sparse_model: str = "Qdrant/bm25"
     rerank_model: str = "Xenova/ms-marco-MiniLM-L-6-v2"
 
@@ -59,7 +65,13 @@ class Settings(BaseSettings):
 
     llm_model: str
     llm_max_tokens: int
+    ollama_base_url: str = "http://localhost:11434"
     agent_max_iterations: int = 4
+    # Retrieved-chunk text budget per app.context.assemble_context call, not the model's full
+    # context window. Conservative default: Ollama's own context window defaults to 4096 tokens
+    # (observed directly on this machine), which also has to fit the system prompt, conversation
+    # history, and the model's own output alongside retrieved chunks.
+    context_token_budget: int = 2000
 
     @field_validator("vault_path")
     @classmethod

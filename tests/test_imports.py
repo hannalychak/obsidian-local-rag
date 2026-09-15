@@ -29,7 +29,7 @@ MODULES = [
     "obsidian_local_rag.core.citations",
     "obsidian_local_rag.adapters.qdrant_store",
     "obsidian_local_rag.adapters.fastembed_encoders",
-    "obsidian_local_rag.adapters.llm_anthropic",
+    "obsidian_local_rag.adapters.llm_ollama",
     "obsidian_local_rag.app.composition",
     "obsidian_local_rag.app.indexing_service",
     "obsidian_local_rag.app.tools",
