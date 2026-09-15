@@ -29,7 +29,9 @@ def chat(
             Settings(vault_path=vault) if vault is not None else Settings()  # type: ignore[call-arg]  # required fields resolved from env/.env at runtime
         )
         services = build_services(settings)
-        agent_loop = AgentLoop(services.llm_client, {}, settings.agent_max_iterations)
+        agent_loop = AgentLoop(
+            services.llm_client, {}, settings.agent_max_iterations, settings.context_token_budget
+        )
         chat_session = ChatSession(agent_loop, system_prompt="")
         asyncio.run(run_chat_repl(chat_session, settings))
     except ValidationError as exc:
