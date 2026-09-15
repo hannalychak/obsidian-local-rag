@@ -80,11 +80,24 @@ class VectorStore(Protocol):
     letting the underlying exception propagate as a traceback.
     """
 
+    def ensure_collection(self, dense_dim: int) -> None:
+        """Create the backing collection (named `dense` size `dense_dim`, named `sparse`) if it
+        doesn't already exist. Idempotent — safe to call before every indexing run.
+        """
+        ...
+
     def upsert(
         self, chunks: list[Chunk], dense: list[list[float]], sparse: list[SparseVector] | None
     ) -> None: ...
 
-    def delete(self, chunk_ids: list[str]) -> None: ...
+    def delete(self, note_ids: list[str]) -> None:
+        """Delete every point belonging to any of `note_ids` (not `chunk_id`s).
+
+        A deleted or re-chunked note's old `chunk_id`s aren't knowable from the caller's side
+        (its file is gone, or its chunking changed) — only its `note_id` is stable, so deletion
+        is note-scoped, matching how incremental indexing actually needs it.
+        """
+        ...
 
     def search_dense(
         self, vector: list[float], k: int, filters: SearchFilters | None
@@ -93,6 +106,14 @@ class VectorStore(Protocol):
     def search_sparse(
         self, vector: SparseVector, k: int, filters: SearchFilters | None
     ) -> list[ScoredChunk]: ...
+
+    def get_by_note_ids(self, note_ids: list[str]) -> list[Chunk]:
+        """Fetch every chunk belonging to any of `note_ids`, unranked (no query vector involved).
+
+        For `expand_graph`: graph expansion scores *notes*, not chunks, and has no query to search
+        with — this is a plain filtered lookup, not a similarity search.
+        """
+        ...
 
 
 class Reranker(Protocol):

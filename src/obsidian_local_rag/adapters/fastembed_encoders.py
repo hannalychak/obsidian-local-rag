@@ -16,8 +16,8 @@ from obsidian_local_rag.domain.models import ScoredChunk
 class FastEmbedDenseEmbedder:
     """`DenseEmbedder` backed by fastembed's local ONNX `TextEmbedding`.
 
-    Models are downloaded on first use and cached under `cache_dir`; construction must not
-    trigger a download (defer model loading until first `embed` call).
+    Models are downloaded on first use and cached under `cache_dir`; construction does not
+    trigger a download (model loading is deferred to the first `embed` call).
     """
 
     def __init__(self, model_name: str, cache_dir: str) -> None:
@@ -25,8 +25,14 @@ class FastEmbedDenseEmbedder:
         self._cache_dir = cache_dir
         self._model: TextEmbedding | None = None
 
+    def _ensure_model(self) -> TextEmbedding:
+        if self._model is None:
+            self._model = TextEmbedding(model_name=self._model_name, cache_dir=self._cache_dir)
+        return self._model
+
     def embed(self, texts: list[str]) -> list[list[float]]:
-        raise NotImplementedError
+        model = self._ensure_model()
+        return [vector.tolist() for vector in model.embed(texts)]
 
 
 class FastEmbedSparseEncoder:
@@ -37,8 +43,19 @@ class FastEmbedSparseEncoder:
         self._cache_dir = cache_dir
         self._model: SparseTextEmbedding | None = None
 
+    def _ensure_model(self) -> SparseTextEmbedding:
+        if self._model is None:
+            self._model = SparseTextEmbedding(
+                model_name=self._model_name, cache_dir=self._cache_dir
+            )
+        return self._model
+
     def encode(self, texts: list[str]) -> list[SparseVector]:
-        raise NotImplementedError
+        model = self._ensure_model()
+        return [
+            (embedding.indices.tolist(), embedding.values.tolist())
+            for embedding in model.embed(texts)
+        ]
 
 
 class FastEmbedReranker:
@@ -53,5 +70,19 @@ class FastEmbedReranker:
         self._cache_dir = cache_dir
         self._model: TextCrossEncoder | None = None
 
+    def _ensure_model(self) -> TextCrossEncoder:
+        if self._model is None:
+            self._model = TextCrossEncoder(model_name=self._model_name, cache_dir=self._cache_dir)
+        return self._model
+
     def rerank(self, query: str, candidates: list[ScoredChunk], top_n: int) -> list[ScoredChunk]:
-        raise NotImplementedError
+        if not candidates:
+            return []
+        model = self._ensure_model()
+        documents = [candidate.chunk.text for candidate in candidates]
+        scores = list(model.rerank(query, documents))
+        ranked = sorted(zip(candidates, scores, strict=True), key=lambda pair: -pair[1])
+        return [
+            ScoredChunk(chunk=candidate.chunk, score=float(score), source="rerank")
+            for candidate, score in ranked[:top_n]
+        ]
