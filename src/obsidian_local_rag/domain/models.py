@@ -48,6 +48,7 @@ class Chunk:
 
     chunk_id: str
     note_id: str
+    path: Path
     header_path: tuple[str, ...]
     text: str
     start_line: int

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from obsidian_local_rag.core.chunking.chunker import chunk_note
 from obsidian_local_rag.core.chunking.markdown import split_into_sections
 from obsidian_local_rag.core.chunking.splitter import (
@@ -12,7 +10,6 @@ from obsidian_local_rag.core.chunking.splitter import (
 )
 
 
-@pytest.mark.skip(reason="not implemented")
 def test_hash_inside_code_fence_is_not_header() -> None:
     body = "# Real Header\n\n```\n# not a header\n```\n\nAfter fence.\n"
     sections = split_into_sections(body)
@@ -20,14 +17,12 @@ def test_hash_inside_code_fence_is_not_header() -> None:
     assert sections[0].header_path == ("Real Header",)
 
 
-@pytest.mark.skip(reason="not implemented")
 def test_inline_tag_without_space_is_not_header() -> None:
     body = "#tag-not-a-header\n\nSome text.\n"
     sections = split_into_sections(body)
     assert sections[0].header_path == ()
 
 
-@pytest.mark.skip(reason="not implemented")
 def test_headerless_note_produces_single_section() -> None:
     body = "Just a paragraph.\n\nAnother paragraph.\n"
     sections = split_into_sections(body)
@@ -35,19 +30,16 @@ def test_headerless_note_produces_single_section() -> None:
     assert sections[0].header_path == ()
 
 
-@pytest.mark.skip(reason="not implemented")
 def test_empty_note_produces_zero_chunks() -> None:
     assert split_into_sections("") == []
 
 
-@pytest.mark.skip(reason="not implemented")
 def test_oversized_section_splits_with_overlap_and_never_inside_fence() -> None:
     section = split_into_sections("# H\n\n" + ("word " * 1000))[0]
     pieces = split_oversized_section(section, max_tokens=100, overlap_tokens=10)
     assert len(pieces) > 1
 
 
-@pytest.mark.skip(reason="not implemented")
 def test_undersized_section_merges_into_next_sibling() -> None:
     body = "# Parent\n\n## Tiny\n\nfew words\n\n## Sibling\n\nmore content here\n"
     sections = split_into_sections(body)
@@ -55,7 +47,6 @@ def test_undersized_section_merges_into_next_sibling() -> None:
     assert all(s.header_path != ("Parent", "Tiny") for s in merged)
 
 
-@pytest.mark.skip(reason="not implemented")
 def test_chunk_id_is_stable_across_repeated_chunking() -> None:
     from pathlib import Path
 
