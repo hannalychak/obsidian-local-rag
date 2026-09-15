@@ -13,6 +13,8 @@ streaming NDJSON lines, each `{"message": {"role", "content", "tool_calls"?}, "d
 from __future__ import annotations
 
 import json
+import subprocess
+import time
 from collections.abc import AsyncIterator
 from typing import Any
 from uuid import uuid4
@@ -21,6 +23,51 @@ import httpx
 
 from obsidian_local_rag.core.protocols import LLMConnectionError, Message, ToolSpec
 from obsidian_local_rag.domain.models import StopEvent, StreamEvent, TextDelta, ToolCallEvent
+
+
+def is_ollama_running(base_url: str) -> bool:
+    """Best-effort check: True if something answers `{base_url}/api/version`."""
+    try:
+        return httpx.get(f"{base_url}/api/version", timeout=1.0).status_code == 200
+    except httpx.HTTPError:
+        return False
+
+
+def ensure_ollama_running(base_url: str, *, startup_timeout: float = 30.0) -> bool:
+    """Start the Ollama service via `brew services` if it isn't already reachable.
+
+    Returns True if this call started it (the caller should stop it again when done); False if
+    it was already running (leave it alone — something else may be using it, e.g. the user
+    started it manually).
+    """
+    if is_ollama_running(base_url):
+        return False
+
+    try:
+        subprocess.run(
+            ["brew", "services", "start", "ollama"], check=True, capture_output=True, text=True
+        )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise LLMConnectionError(
+            "Could not start Ollama via `brew services start ollama`. Start it yourself "
+            "(`brew services start ollama`) and try again."
+        ) from exc
+
+    deadline = time.monotonic() + startup_timeout
+    while time.monotonic() < deadline:
+        if is_ollama_running(base_url):
+            return True
+        time.sleep(0.5)
+
+    raise LLMConnectionError(
+        f"Started Ollama via `brew services start ollama` but it didn't come up at {base_url} "
+        f"within {startup_timeout:.0f}s."
+    )
+
+
+def stop_ollama() -> None:
+    """Stop the Ollama service via `brew services`. Best-effort — never raises."""
+    subprocess.run(["brew", "services", "stop", "ollama"], check=False, capture_output=True)
 
 
 def _to_ollama_message(message: Message) -> dict[str, Any]:
