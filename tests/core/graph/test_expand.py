@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from obsidian_local_rag.core.graph.builder import NoteGraph
 from obsidian_local_rag.core.graph.expand import expand
 from obsidian_local_rag.domain.models import Link, Note
@@ -39,7 +37,6 @@ def _link(source: str, target: str, kind: str = "link") -> Link:
     )
 
 
-@pytest.mark.skip(reason="not implemented")
 def test_bfs_terminates_on_cycle() -> None:
     """`Cycle A` <-> `Cycle B` must not cause infinite expansion."""
     notes = {"Cycle A": _note("Cycle A"), "Cycle B": _note("Cycle B")}
@@ -55,7 +52,6 @@ def test_bfs_terminates_on_cycle() -> None:
     assert len(result) <= 1  # only "Cycle B" reachable, visited set prevents re-visiting "Cycle A"
 
 
-@pytest.mark.skip(reason="not implemented")
 def test_hub_node_not_expanded_through() -> None:
     """A node whose degree exceeds `hub_degree_threshold` may appear in results, but its own
     neighbors must never be enqueued.
@@ -77,7 +73,6 @@ def test_hub_node_not_expanded_through() -> None:
     assert "beyond_hub" not in result_ids
 
 
-@pytest.mark.skip(reason="not implemented")
 def test_expansion_respects_max_nodes() -> None:
     notes = {f"n{i}": _note(f"n{i}") for i in range(30)}
     links = [_link("n0", f"n{i}") for i in range(1, 30)]
@@ -88,7 +83,6 @@ def test_expansion_respects_max_nodes() -> None:
     assert len(result) <= 5
 
 
-@pytest.mark.skip(reason="not implemented")
 def test_seeds_excluded_from_results() -> None:
     notes = {"a": _note("a"), "b": _note("b")}
     graph = NoteGraph.build(notes, [_link("a", "b")])
