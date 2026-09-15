@@ -1,12 +1,14 @@
 # obsidian-local-rag
 
-A terminal-based agentic RAG assistant over a local Obsidian vault: hybrid (dense + sparse)
-retrieval, knowledge-graph expansion over wiki-links, cross-encoder reranking, and a bounded
-tool-calling agent loop that streams answers with verified citations back to your source notes.
+A privacy-first, terminal-based agentic RAG assistant over a local Obsidian vault: hybrid (dense
++ sparse) retrieval, knowledge-graph expansion over wiki-links, cross-encoder reranking, and a
+bounded tool-calling agent loop that streams answers with verified citations back to your source
+notes.
 
-Everything runs locally, by design — embeddings, the vector store, and the LLM itself (via
-[Ollama](https://ollama.com)). Vault content never leaves the machine. The vault is read-only —
-this tool never writes, moves, renames, or deletes anything inside it.
+**Privacy guarantee: everything runs locally, by design** — embeddings, the vector store, and the
+LLM itself (via [Ollama](https://ollama.com)) all execute on your machine. Vault content never
+leaves it: no note text, question, or answer is ever sent to a third-party server. The vault is
+also read-only — this tool never writes, moves, renames, or deletes anything inside it.
 
 ## Why
 
@@ -16,12 +18,15 @@ the moment but are hard to hold in your head a month later. Full-text search fin
 doesn't answer "what did I write about X" when the answer is spread across three notes linked to
 each other, or phrased differently than you're searching for.
 
-The obvious fix is to point an AI assistant at the vault — except that means uploading personal
-notes (coursework, unfinished ideas, private research) to someone else's server just to search
-your own files. This project exists to avoid that trade-off: the same agentic RAG experience —
-hybrid search, graph-aware expansion of related notes, cited answers — but with embeddings, the
-vector store, and the LLM itself all running on the machine the notes already live on. Nothing
-about the vault's content is uploaded anywhere, ever.
+Tools like [NotebookLM](https://notebooklm.google) solve the "chat with my documents" problem the
+obvious way — upload your notes to their servers and let a cloud model index them. That means
+handing over coursework, unfinished ideas, and private research just to search your own files.
+This project exists to get the same agentic RAG experience — hybrid search, graph-aware expansion
+of related notes, cited answers — without that trade-off: embeddings, the vector store, and the
+LLM itself all run on the machine the notes already live on. Nothing about the vault's content is
+ever uploaded anywhere. Privacy isn't a mode you opt into — the architecture has no code path that
+could send vault content to a network service even if you wanted it to (see `CLAUDE.md`'s
+"LLM backend: Ollama only, by design").
 
 ## Install
 
