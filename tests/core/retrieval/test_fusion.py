@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
+from pathlib import Path
 
 from obsidian_local_rag.core.retrieval.fusion import reciprocal_rank_fusion
 from obsidian_local_rag.domain.models import Chunk, ScoredChunk
@@ -12,6 +12,7 @@ def _scored_chunk(chunk_id: str, score: float) -> ScoredChunk:
     chunk = Chunk(
         chunk_id=chunk_id,
         note_id="note",
+        path=Path("note.md"),
         header_path=(),
         text="text",
         start_line=1,
@@ -24,7 +25,6 @@ def _scored_chunk(chunk_id: str, score: float) -> ScoredChunk:
     return ScoredChunk(chunk=chunk, score=score, source="dense")
 
 
-@pytest.mark.skip(reason="not implemented")
 def test_rrf_missing_doc_contributes_zero() -> None:
     """A chunk present in only one ranked list still gets fused, contributing 0 for the list(s)
     it's absent from.
@@ -35,7 +35,6 @@ def test_rrf_missing_doc_contributes_zero() -> None:
     assert {c.chunk.chunk_id for c in fused} == {"a", "b"}
 
 
-@pytest.mark.skip(reason="not implemented")
 def test_rrf_deduplicates_by_chunk_id() -> None:
     dense = [_scored_chunk("a", 0.9)]
     sparse = [_scored_chunk("a", 3.0)]
@@ -43,7 +42,6 @@ def test_rrf_deduplicates_by_chunk_id() -> None:
     assert len(fused) == 1
 
 
-@pytest.mark.skip(reason="not implemented")
 def test_rrf_tie_break_by_best_rank_then_chunk_id() -> None:
     """Equal fused scores break ties by best single rank ascending, then `chunk_id` ascending."""
     list_a = [_scored_chunk("z", 1.0), _scored_chunk("a", 0.5)]
@@ -51,7 +49,6 @@ def test_rrf_tie_break_by_best_rank_then_chunk_id() -> None:
     assert [c.chunk.chunk_id for c in fused] == ["z", "a"]
 
 
-@pytest.mark.skip(reason="not implemented")
 def test_rrf_only_considers_top_candidate_k_of_each_list() -> None:
     dense = [_scored_chunk(str(i), 1.0 - i * 0.01) for i in range(100)]
     fused = reciprocal_rank_fusion([dense], k=60, candidate_k=10)

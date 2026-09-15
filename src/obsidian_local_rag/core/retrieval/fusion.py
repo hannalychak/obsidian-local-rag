@@ -18,4 +18,27 @@ def reciprocal_rank_fusion(
 
     Complexity: O(n log n) in total candidates.
     """
-    raise NotImplementedError
+    fused_scores: dict[str, float] = {}
+    best_rank: dict[str, int] = {}
+    representative: dict[str, ScoredChunk] = {}
+
+    for ranked_list in ranked_lists:
+        for rank, scored_chunk in enumerate(ranked_list[:candidate_k], start=1):
+            chunk_id = scored_chunk.chunk.chunk_id
+            fused_scores[chunk_id] = fused_scores.get(chunk_id, 0.0) + 1.0 / (k + rank)
+            if chunk_id not in best_rank or rank < best_rank[chunk_id]:
+                best_rank[chunk_id] = rank
+            representative.setdefault(chunk_id, scored_chunk)
+
+    ordered_ids = sorted(
+        fused_scores, key=lambda chunk_id: (-fused_scores[chunk_id], best_rank[chunk_id], chunk_id)
+    )
+
+    return [
+        ScoredChunk(
+            chunk=representative[chunk_id].chunk,
+            score=fused_scores[chunk_id],
+            source=representative[chunk_id].source,
+        )
+        for chunk_id in ordered_ids
+    ]
